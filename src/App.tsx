@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import { DashboardScreen, UserSetupScreen } from './screens/index.ts'
+import {
+  DashboardScreen,
+  GoalsScreen,
+  UserSetupScreen,
+} from './screens/index.ts'
 import { AppProvider, useApp } from './state/index.ts'
 
 function AppContent() {
   const { state } = useApp()
+  const [currentView, setCurrentView] = useState<'dashboard' | 'goals'>('dashboard')
   const [isEditingProfile, setIsEditingProfile] = useState(false)
 
   if (!state.user || isEditingProfile) {
@@ -15,7 +20,20 @@ function AppContent() {
     )
   }
 
-  return <DashboardScreen onEditProfile={() => setIsEditingProfile(true)} />
+  if (currentView === 'goals') {
+    return (
+      <GoalsScreen
+        onNavigateToDashboard={() => setCurrentView('dashboard')}
+      />
+    )
+  }
+
+  return (
+    <DashboardScreen
+      onEditProfile={() => setIsEditingProfile(true)}
+      onNavigateToGoals={() => setCurrentView('goals')}
+    />
+  )
 }
 
 export function App() {

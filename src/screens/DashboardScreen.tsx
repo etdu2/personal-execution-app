@@ -6,11 +6,17 @@ import { formatMinutesToHours } from '../utils/index.ts'
 
 export interface DashboardScreenProps {
   onEditProfile?: () => void
+  onNavigateToGoals?: () => void
 }
 
-export function DashboardScreen({ onEditProfile }: DashboardScreenProps) {
+export function DashboardScreen({
+  onEditProfile,
+  onNavigateToGoals,
+}: DashboardScreenProps) {
   const { state } = useApp()
   const user = state.user
+  const activeGoals = state.goals.filter((g) => g.status === 'active')
+  const criticalGoals = activeGoals.filter((g) => g.priority === 'critical')
 
   // Sample domain target verification (generic, user-agnostic)
   const baselineTarget: WeeklyGoalTarget = {
@@ -99,6 +105,41 @@ export function DashboardScreen({ onEditProfile }: DashboardScreenProps) {
             </div>
           </Card>
         )}
+
+        {/* Goals & Priorities Summary Card */}
+        <Card
+          title="Goals & Priorities"
+          subtitle="Step 1 in Core Loop: Define goals, target hours, and selective day distribution"
+        >
+          <div className="status-grid">
+            <div className="status-item">
+              <span className="status-label">Total Goals</span>
+              <span className="status-value">{state.goals.length}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Active Goals</span>
+              <span className="status-value">{activeGoals.length}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Critical Priority</span>
+              <Badge variant={criticalGoals.length > 0 ? 'danger' : 'default'}>
+                {criticalGoals.length} Critical
+              </Badge>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Categories</span>
+              <span className="status-value">{state.categories.length} Defined</span>
+            </div>
+          </div>
+
+          <div className="card-actions">
+            {onNavigateToGoals && (
+              <Button type="button" variant="primary" onClick={onNavigateToGoals}>
+                {state.goals.length === 0 ? '+ Define First Goal' : 'Manage Goals & Priorities'}
+              </Button>
+            )}
+          </div>
+        </Card>
 
         <Card
           title="System Foundation Status"
