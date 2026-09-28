@@ -3,6 +3,7 @@ import type {
   Goal,
   GoalCategory,
   ISODateString,
+  LongTermTarget,
   Priority,
   User,
 } from '../types/index.ts'
@@ -13,6 +14,7 @@ export interface AppState {
   isInitialized: boolean
   goals: Goal[]
   categories: GoalCategory[]
+  targets: LongTermTarget[]
 }
 
 export interface AppContextValue {
@@ -25,6 +27,7 @@ export interface AppContextValue {
   archiveGoal: (goalId: string) => void
   setGoalPriority: (goalId: string, priority: Priority) => void
   addCategory: (category: GoalCategory) => void
+  saveGoalTargets: (goalId: string, targets: LongTermTarget[]) => void
 }
 
 export const AppContext = createContext<AppContextValue | undefined>(undefined)

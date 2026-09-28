@@ -4,6 +4,8 @@ import type {
   GoalCategory,
   GoalDistribution,
   GoalStatus,
+  LongTermTarget,
+  LongTermTargetHorizon,
   Priority,
   WeeklyGoalTarget,
 } from '../types/index.ts'
@@ -34,6 +36,73 @@ export const ALL_DAYS_OF_WEEK: DayOfWeek[] = [
 ]
 
 /**
+ * Horizon metadata configuration mapping each domain horizon to its planning tier and description.
+ */
+export interface HorizonMetadata {
+  horizon: LongTermTargetHorizon
+  label: string
+  tier: 'Long-term' | 'Medium-term' | 'Short-term'
+  description: string
+}
+
+export const TARGET_HORIZONS: HorizonMetadata[] = [
+  {
+    horizon: '1_year',
+    label: '1-Year Target',
+    tier: 'Long-term',
+    description: 'Long-term destination and major yearly milestone',
+  },
+  {
+    horizon: '9_months',
+    label: '9-Month Target',
+    tier: 'Medium-term',
+    description: 'Three-quarter progress milestone',
+  },
+  {
+    horizon: '6_months',
+    label: '6-Month Target',
+    tier: 'Medium-term',
+    description: 'Mid-year checkpoint milestone',
+  },
+  {
+    horizon: '3_months',
+    label: '3-Month Target',
+    tier: 'Medium-term',
+    description: 'Quarterly tactical target',
+  },
+  {
+    horizon: 'monthly',
+    label: 'Monthly Target',
+    tier: 'Short-term',
+    description: 'Short-term immediate monthly target',
+  },
+]
+
+/**
+ * Form data representation for a single milestone horizon target.
+ */
+export interface HorizonTargetFormData {
+  title: string
+  description: string
+  targetDate: string
+}
+
+export type HorizonTargetsMap = Record<
+  LongTermTargetHorizon,
+  HorizonTargetFormData
+>
+
+export function createEmptyHorizonTargetsMap(): HorizonTargetsMap {
+  return {
+    '1_year': { title: '', description: '', targetDate: '' },
+    '9_months': { title: '', description: '', targetDate: '' },
+    '6_months': { title: '', description: '', targetDate: '' },
+    '3_months': { title: '', description: '', targetDate: '' },
+    monthly: { title: '', description: '', targetDate: '' },
+  }
+}
+
+/**
  * Raw form input data for goal creation and modification.
  * Holds string representations prior to domain validation and casting.
  */
@@ -53,6 +122,7 @@ export interface GoalFormData {
   isFlexible: boolean
   startDate: string
   endDate: string
+  targets: HorizonTargetsMap
 }
 
 /**
@@ -67,6 +137,15 @@ export interface GoalValidationErrors {
   preferredDays?: string
   startDate?: string
   endDate?: string
+  targetErrors?: Partial<
+    Record<
+      LongTermTargetHorizon,
+      {
+        title?: string
+        targetDate?: string
+      }
+    >
+  >
 }
 
 export interface GoalValidationResult {
@@ -94,7 +173,22 @@ export function sortGoalsByPriority(goals: Goal[]): Goal[] {
 export function getInitialGoalFormData(
   existingGoal?: Goal,
   defaultCategoryId?: string,
+  existingTargets?: LongTermTarget[],
 ): GoalFormData {
+  const initialTargetsMap = createEmptyHorizonTargetsMap()
+
+  if (existingTargets) {
+    for (const target of existingTargets) {
+      if (initialTargetsMap[target.horizon]) {
+        initialTargetsMap[target.horizon] = {
+          title: target.title,
+          description: target.description ?? '',
+          targetDate: target.targetDate ?? '',
+        }
+      }
+    }
+  }
+
   if (existingGoal) {
     return {
       title: existingGoal.title,
@@ -121,6 +215,7 @@ export function getInitialGoalFormData(
       isFlexible: existingGoal.distribution.isFlexible,
       startDate: existingGoal.startDate,
       endDate: existingGoal.endDate ?? '',
+      targets: initialTargetsMap,
     }
   }
 
@@ -140,17 +235,19 @@ export function getInitialGoalFormData(
     isFlexible: true,
     startDate: getTodayISODate(),
     endDate: '',
+    targets: initialTargetsMap,
   }
 }
 
 /**
- * Validates a goal form against domain rules.
+ * Validates a goal form and its target time requirements against domain rules.
  */
 export function validateGoalForm(
   data: GoalFormData,
   hasExistingCategories: boolean,
 ): GoalValidationResult {
   const errors: GoalValidationErrors = {}
+  const targetErrors: GoalValidationErrors['targetErrors'] = {}
 
   const trimmedTitle = data.title.trim()
   if (!trimmedTitle) {
@@ -166,27 +263,22 @@ export function validateGoalForm(
       : 'Please enter a category name for this goal.'
   }
 
-  // Weekly hours validation
+  // Weekly hours validation:
+  // 1. minimum hours cannot be negative and must be valid
   const minHours = Number(data.minimumHours)
-  if (
-    !data.minimumHours.trim() ||
-    Number.isNaN(minHours) ||
-    minHours < 0
-  ) {
+  if (!data.minimumHours.trim() || Number.isNaN(minHours) || minHours < 0) {
     errors.minimumHours = 'Minimum hours must be a valid number (>= 0).'
   }
 
+  // 2. target hours must be positive and >= minimum hours
   const targetHours = Number(data.targetHours)
-  if (
-    !data.targetHours.trim() ||
-    Number.isNaN(targetHours) ||
-    targetHours <= 0
-  ) {
+  if (!data.targetHours.trim() || Number.isNaN(targetHours) || targetHours <= 0) {
     errors.targetHours = 'Target hours must be a valid positive number.'
   } else if (!Number.isNaN(minHours) && targetHours < minHours) {
     errors.targetHours = 'Target hours cannot be less than minimum hours.'
   }
 
+  // 3. maximum hours (optional): cannot be less than target hours
   if (data.maximumHours.trim()) {
     const maxHours = Number(data.maximumHours)
     if (Number.isNaN(maxHours) || maxHours <= 0) {
@@ -212,6 +304,33 @@ export function validateGoalForm(
     }
   }
 
+  // Horizon Targets validation
+  for (const item of TARGET_HORIZONS) {
+    const horizonData = data.targets[item.horizon]
+    if (horizonData) {
+      const targetTitle = horizonData.title.trim()
+      const targetDate = horizonData.targetDate.trim()
+
+      if (targetTitle && targetTitle.length < 2) {
+        targetErrors[item.horizon] = {
+          ...targetErrors[item.horizon],
+          title: 'Target title must be at least 2 characters if provided.',
+        }
+      }
+
+      if (targetDate && data.startDate.trim() && targetDate < data.startDate.trim()) {
+        targetErrors[item.horizon] = {
+          ...targetErrors[item.horizon],
+          targetDate: 'Target date cannot be earlier than goal start date.',
+        }
+      }
+    }
+  }
+
+  if (Object.keys(targetErrors).length > 0) {
+    errors.targetErrors = targetErrors
+  }
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
@@ -221,10 +340,7 @@ export function validateGoalForm(
 /**
  * Creates a new user-defined GoalCategory entity.
  */
-export function createGoalCategory(
-  name: string,
-  userId: string,
-): GoalCategory {
+export function createGoalCategory(name: string, userId: string): GoalCategory {
   const now = new Date().toISOString()
   return {
     id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -284,4 +400,48 @@ export function createGoalFromFormData(
     createdAt: existingGoal?.createdAt ?? now,
     updatedAt: now,
   }
+}
+
+/**
+ * Creates or updates domain LongTermTarget entities from validated form data for a given goal.
+ */
+export function createTargetsFromFormData(
+  data: GoalFormData,
+  userId: string,
+  goalId: string,
+  existingTargets: LongTermTarget[] = [],
+): LongTermTarget[] {
+  const now = new Date().toISOString()
+  const result: LongTermTarget[] = []
+
+  for (const item of TARGET_HORIZONS) {
+    const horizonData = data.targets[item.horizon]
+    if (!horizonData) {
+      continue
+    }
+
+    const trimmedTitle = horizonData.title.trim()
+    const existing = existingTargets.find(
+      (t) => t.goalId === goalId && t.horizon === item.horizon,
+    )
+
+    if (trimmedTitle) {
+      result.push({
+        id:
+          existing?.id ??
+          `target_${Date.now()}_${item.horizon}_${Math.random().toString(36).substring(2, 6)}`,
+        userId,
+        goalId,
+        horizon: item.horizon,
+        title: trimmedTitle,
+        description: horizonData.description.trim() || undefined,
+        targetDate: horizonData.targetDate.trim() || undefined,
+        status: existing?.status ?? 'not_started',
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      })
+    }
+  }
+
+  return result
 }

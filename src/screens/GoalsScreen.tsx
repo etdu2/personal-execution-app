@@ -2,8 +2,10 @@ import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Badge, Button, Card, Header } from '../components/index.ts'
 import {
   ALL_DAYS_OF_WEEK,
+  TARGET_HORIZONS,
   createGoalCategory,
   createGoalFromFormData,
+  createTargetsFromFormData,
   getInitialGoalFormData,
   sortGoalsByPriority,
   validateGoalForm,
@@ -11,7 +13,12 @@ import {
   type GoalValidationErrors,
 } from '../services/index.ts'
 import { useApp } from '../state/index.ts'
-import type { DayOfWeek, Goal, Priority } from '../types/index.ts'
+import type {
+  DayOfWeek,
+  Goal,
+  LongTermTargetHorizon,
+  Priority,
+} from '../types/index.ts'
 
 export interface GoalsScreenProps {
   onNavigateToDashboard: () => void
@@ -26,6 +33,7 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
     archiveGoal,
     setGoalPriority,
     addCategory,
+    saveGoalTargets,
   } = useApp()
 
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -39,14 +47,15 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
 
   const handleOpenCreateForm = () => {
     setEditingGoal(null)
-    setFormData(getInitialGoalFormData(undefined, state.categories[0]?.id))
+    setFormData(getInitialGoalFormData(undefined, state.categories[0]?.id, []))
     setErrors({})
     setIsFormOpen(true)
   }
 
   const handleOpenEditForm = (goal: Goal) => {
+    const goalTargets = state.targets.filter((t) => t.goalId === goal.id)
     setEditingGoal(goal)
-    setFormData(getInitialGoalFormData(goal))
+    setFormData(getInitialGoalFormData(goal, undefined, goalTargets))
     setErrors({})
     setIsFormOpen(true)
   }
@@ -103,6 +112,36 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
     }
   }
 
+  const handleTargetChange = (
+    horizon: LongTermTargetHorizon,
+    field: 'title' | 'description' | 'targetDate',
+    value: string,
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      targets: {
+        ...prev.targets,
+        [horizon]: {
+          ...prev.targets[horizon],
+          [field]: value,
+        },
+      },
+    }))
+
+    if (errors.targetErrors?.[horizon]?.[field as 'title' | 'targetDate']) {
+      setErrors((prev) => ({
+        ...prev,
+        targetErrors: {
+          ...prev.targetErrors,
+          [horizon]: {
+            ...prev.targetErrors?.[horizon],
+            [field]: undefined,
+          },
+        },
+      }))
+    }
+  }
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
@@ -118,7 +157,7 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
 
     let targetCategoryId = formData.categoryId
 
-    // If user specified a new category name, create it and register in state
+    // If user typed a new category name, register it in state
     if (formData.newCategoryName.trim()) {
       const newCategory = createGoalCategory(
         formData.newCategoryName.trim(),
@@ -140,6 +179,16 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
     } else {
       addGoal(goal)
     }
+
+    // Save associated horizon targets
+    const existingGoalTargets = state.targets.filter((t) => t.goalId === goal.id)
+    const updatedTargets = createTargetsFromFormData(
+      formData,
+      state.user.id,
+      goal.id,
+      existingGoalTargets,
+    )
+    saveGoalTargets(goal.id, updatedTargets)
 
     handleCloseForm()
   }
@@ -176,7 +225,7 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
     <main className="dashboard-container">
       <Header
         title="Personal Execution & Balance System"
-        subtitle="Step 1: User Defines — Goals, Categories & Priorities"
+        subtitle="Step 1: User Defines — Goals, Target Horizons & Time Requirements"
       />
 
       <div className="dashboard-content">
@@ -203,11 +252,11 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
         {/* Goal Creation / Editing Form */}
         {isFormOpen && (
           <Card
-            title={editingGoal ? 'Edit Goal' : 'Define New Goal'}
+            title={editingGoal ? 'Edit Goal & Targets' : 'Define New Goal'}
             subtitle={
               editingGoal
-                ? `Editing target and distribution for "${editingGoal.title}"`
-                : 'Set a target objective, assign priority, and define weekly hour targets.'
+                ? `Configure target milestones and weekly time requirements for "${editingGoal.title}"`
+                : 'Set an objective, target horizons (1-yr, 9-mo, 6-mo, 3-mo, monthly), and weekly time boundaries.'
             }
           >
             <form onSubmit={handleSubmit} className="setup-form" noValidate>
@@ -304,7 +353,14 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
                 </div>
               </div>
 
-              {/* Weekly Target Hours */}
+              {/* Weekly Time Requirements */}
+              <div className="form-section-divider">
+                <h4 className="form-section-title">Weekly Time Requirements</h4>
+                <p className="form-section-desc">
+                  Define weekly hour allocation boundaries to guide balanced planning.
+                </p>
+              </div>
+
               <div className="form-row">
                 <div className="form-group form-col">
                   <label htmlFor="minimumHours" className="form-label">
@@ -361,14 +417,102 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
                     value={formData.maximumHours}
                     onChange={handleChange}
                   />
-                  <span className="form-hint">Ceiling to protect systemic balance.</span>
+                  <span className="form-hint">Upper ceiling to guard against burnout.</span>
                   {errors.maximumHours && (
                     <p className="form-error-msg">{errors.maximumHours}</p>
                   )}
                 </div>
               </div>
 
+              {/* Target Horizons (1-yr, 9-mo, 6-mo, 3-mo, monthly) */}
+              <div className="form-section-divider">
+                <h4 className="form-section-title">
+                  Target Milestones & Horizons (User-Defined)
+                </h4>
+                <p className="form-section-desc">
+                  Define long-term (1-yr), medium-term (9-mo, 6-mo, 3-mo), and short-term (monthly) targets.
+                </p>
+              </div>
+
+              <div className="target-horizons-form-list">
+                {TARGET_HORIZONS.map((item) => {
+                  const targetState = formData.targets[item.horizon]
+                  const fieldErrors = errors.targetErrors?.[item.horizon]
+
+                  return (
+                    <div key={item.horizon} className="horizon-input-card">
+                      <div className="horizon-input-header">
+                        <span className="horizon-badge-tier">{item.tier}</span>
+                        <span className="horizon-badge-title">{item.label}</span>
+                        <span className="horizon-badge-desc">{item.description}</span>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group form-col-wide">
+                          <label
+                            htmlFor={`target-${item.horizon}-title`}
+                            className="form-label"
+                          >
+                            Milestone Target Statement
+                          </label>
+                          <input
+                            id={`target-${item.horizon}-title`}
+                            type="text"
+                            className={`form-input ${fieldErrors?.title ? 'input-error' : ''}`.trim()}
+                            placeholder={`Define ${item.label.toLowerCase()} milestone outcome...`}
+                            value={targetState.title}
+                            onChange={(e) =>
+                              handleTargetChange(item.horizon, 'title', e.target.value)
+                            }
+                          />
+                          {fieldErrors?.title && (
+                            <p className="form-error-msg">{fieldErrors.title}</p>
+                          )}
+                        </div>
+
+                        <div className="form-group form-col-narrow">
+                          <label
+                            htmlFor={`target-${item.horizon}-date`}
+                            className="form-label"
+                          >
+                            Target Date <span className="optional-tag">(Optional)</span>
+                          </label>
+                          <input
+                            id={`target-${item.horizon}-date`}
+                            type="date"
+                            className={`form-input ${fieldErrors?.targetDate ? 'input-error' : ''}`.trim()}
+                            value={targetState.targetDate}
+                            onChange={(e) =>
+                              handleTargetChange(item.horizon, 'targetDate', e.target.value)
+                            }
+                          />
+                          {fieldErrors?.targetDate && (
+                            <p className="form-error-msg">{fieldErrors.targetDate}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <input
+                          type="text"
+                          className="form-input form-input-subtle"
+                          placeholder="Optional notes or milestone criteria..."
+                          value={targetState.description}
+                          onChange={(e) =>
+                            handleTargetChange(item.horizon, 'description', e.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
               {/* Distribution Across Selected Days */}
+              <div className="form-section-divider">
+                <h4 className="form-section-title">Schedule Distribution</h4>
+              </div>
+
               <div className="form-group">
                 <label className="form-label">
                   Preferred Days of Execution <span className="required-mark">*</span>
@@ -491,7 +635,7 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
 
               <div className="form-actions">
                 <Button type="submit" variant="primary">
-                  {editingGoal ? 'Save Goal Changes' : 'Create Goal'}
+                  {editingGoal ? 'Save Goal & Targets' : 'Create Goal'}
                 </Button>
                 <Button type="button" variant="secondary" onClick={handleCloseForm}>
                   Cancel
@@ -544,8 +688,9 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
             subtitle="The Personal Execution & Balance System begins with user-defined objectives."
           >
             <p className="empty-state-text">
-              You haven't created any goals yet. Define your first goal with minimum and target
-              hours, and assign its preferred days to start building your balanced execution plan.
+              You haven&apos;t created any goals yet. Define your first goal with minimum and target
+              hours, and configure its milestone targets (1-year, 9-month, 6-month, 3-month, monthly)
+              to build your balanced execution plan.
             </p>
             <div className="card-actions">
               <Button type="button" variant="primary" onClick={handleOpenCreateForm}>
@@ -566,137 +711,195 @@ export function GoalsScreen({ onNavigateToDashboard }: GoalsScreenProps) {
 
         {/* Goals Cards List */}
         <div className="goals-list">
-          {displayedGoals.map((goal) => (
-            <div key={goal.id} className="goal-card">
-              <div className="goal-card-main">
-                <div className="goal-header-row">
-                  <div className="goal-title-wrap">
-                    <h3 className="goal-title">{goal.title}</h3>
-                    <span className="goal-category-tag">
-                      {getCategoryName(goal.categoryId)}
-                    </span>
-                  </div>
+          {displayedGoals.map((goal) => {
+            const goalTargets = state.targets.filter((t) => t.goalId === goal.id)
 
-                  <div className="goal-badges-wrap">
-                    <Badge variant={getPriorityBadgeVariant(goal.priority)}>
-                      {goal.priority.toUpperCase()}
-                    </Badge>
-                    <Badge
-                      variant={
-                        goal.status === 'active'
-                          ? 'success'
-                          : goal.status === 'archived'
-                            ? 'default'
-                            : 'warning'
-                      }
-                    >
-                      {goal.status}
-                    </Badge>
-                  </div>
-                </div>
-
-                {goal.description && (
-                  <p className="goal-description">{goal.description}</p>
-                )}
-
-                <div className="goal-meta-grid">
-                  <div className="goal-meta-item">
-                    <span className="meta-label">Weekly Hours</span>
-                    <span className="meta-val">
-                      Min: {goal.weeklyTarget.minimumHours}h | Target: {goal.weeklyTarget.targetHours}h
-                      {goal.weeklyTarget.maximumHours !== undefined &&
-                        ` | Max: ${goal.weeklyTarget.maximumHours}h`}
-                    </span>
-                  </div>
-
-                  <div className="goal-meta-item">
-                    <span className="meta-label">Preferred Days</span>
-                    <span className="meta-val">
-                      {goal.distribution.preferredDays
-                        .map((d) => d.substring(0, 3).toUpperCase())
-                        .join(', ')}
-                      {goal.distribution.isFlexible && ' (Flexible)'}
-                    </span>
-                  </div>
-
-                  {goal.distribution.preferredSessionDurationMinutes && (
-                    <div className="goal-meta-item">
-                      <span className="meta-label">Session Target</span>
-                      <span className="meta-val">
-                        {goal.distribution.preferredSessionDurationMinutes} min
-                        {goal.distribution.targetSessionsPerWeek &&
-                          ` × ${goal.distribution.targetSessionsPerWeek}/wk`}
+            return (
+              <div key={goal.id} className="goal-card">
+                <div className="goal-card-main">
+                  <div className="goal-header-row">
+                    <div className="goal-title-wrap">
+                      <h3 className="goal-title">{goal.title}</h3>
+                      <span className="goal-category-tag">
+                        {getCategoryName(goal.categoryId)}
                       </span>
                     </div>
+
+                    <div className="goal-badges-wrap">
+                      <Badge variant={getPriorityBadgeVariant(goal.priority)}>
+                        {goal.priority.toUpperCase()}
+                      </Badge>
+                      <Badge
+                        variant={
+                          goal.status === 'active'
+                            ? 'success'
+                            : goal.status === 'archived'
+                              ? 'default'
+                              : 'warning'
+                        }
+                      >
+                        {goal.status}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {goal.description && (
+                    <p className="goal-description">{goal.description}</p>
                   )}
+
+                  {/* Weekly Time Requirements Meta */}
+                  <div className="goal-meta-grid">
+                    <div className="goal-meta-item">
+                      <span className="meta-label">Weekly Time Requirements</span>
+                      <span className="meta-val">
+                        Min: {goal.weeklyTarget.minimumHours}h/wk | Target: {goal.weeklyTarget.targetHours}h/wk
+                        {goal.weeklyTarget.maximumHours !== undefined
+                          ? ` | Max: ${goal.weeklyTarget.maximumHours}h/wk`
+                          : ' | Max: None'}
+                      </span>
+                    </div>
+
+                    <div className="goal-meta-item">
+                      <span className="meta-label">Preferred Days</span>
+                      <span className="meta-val">
+                        {goal.distribution.preferredDays
+                          .map((d) => d.substring(0, 3).toUpperCase())
+                          .join(', ')}
+                        {goal.distribution.isFlexible && ' (Flexible)'}
+                      </span>
+                    </div>
+
+                    {goal.distribution.preferredSessionDurationMinutes && (
+                      <div className="goal-meta-item">
+                        <span className="meta-label">Session Target</span>
+                        <span className="meta-val">
+                          {goal.distribution.preferredSessionDurationMinutes} min
+                          {goal.distribution.targetSessionsPerWeek &&
+                            ` × ${goal.distribution.targetSessionsPerWeek}/wk`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Milestone Horizons Display */}
+                  <div className="goal-targets-section">
+                    <div className="targets-section-title-row">
+                      <span className="targets-section-label">
+                        Target Milestones (Long, Medium & Short Term)
+                      </span>
+                      {goalTargets.length > 0 && (
+                        <span className="targets-count-badge">
+                          {goalTargets.length} configured
+                        </span>
+                      )}
+                    </div>
+
+                    {goalTargets.length === 0 ? (
+                      <div className="targets-empty-box">
+                        <Badge variant="warning">Targets: Not configured yet</Badge>
+                        <span className="targets-empty-hint">
+                          No 1-year, 9-month, 6-month, 3-month, or monthly targets defined yet.
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="targets-card-grid">
+                        {TARGET_HORIZONS.map((meta) => {
+                          const matchedTarget = goalTargets.find(
+                            (t) => t.horizon === meta.horizon,
+                          )
+                          if (!matchedTarget) return null
+
+                          return (
+                            <div key={meta.horizon} className="target-card-item">
+                              <div className="target-item-top">
+                                <span className="target-item-label">{meta.label}</span>
+                                <Badge variant="default">{matchedTarget.status}</Badge>
+                              </div>
+                              <p className="target-item-title">{matchedTarget.title}</p>
+                              {matchedTarget.targetDate && (
+                                <span className="target-item-date">
+                                  Target Date: {matchedTarget.targetDate}
+                                </span>
+                              )}
+                              {matchedTarget.description && (
+                                <p className="target-item-desc">
+                                  {matchedTarget.description}
+                                </p>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Goal Actions */}
-              <div className="goal-card-actions">
-                <div className="priority-control">
-                  <label htmlFor={`priority-select-${goal.id}`} className="control-label">
-                    Priority:
-                  </label>
-                  <select
-                    id={`priority-select-${goal.id}`}
-                    value={goal.priority}
-                    onChange={(e) =>
-                      setGoalPriority(goal.id, e.target.value as Priority)
-                    }
-                    className="priority-inline-select"
-                  >
-                    <option value="critical">Critical</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                </div>
-
-                <div className="action-buttons-wrap">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => handleOpenEditForm(goal)}
-                  >
-                    Edit
-                  </Button>
-
-                  {goal.status === 'archived' ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() =>
-                        updateGoal({
-                          ...goal,
-                          status: 'active',
-                          updatedAt: new Date().toISOString(),
-                        })
+                {/* Goal Actions */}
+                <div className="goal-card-actions">
+                  <div className="priority-control">
+                    <label htmlFor={`priority-select-${goal.id}`} className="control-label">
+                      Priority:
+                    </label>
+                    <select
+                      id={`priority-select-${goal.id}`}
+                      value={goal.priority}
+                      onChange={(e) =>
+                        setGoalPriority(goal.id, e.target.value as Priority)
                       }
+                      className="priority-inline-select"
                     >
-                      Reactivate
-                    </Button>
-                  ) : (
+                      <option value="critical">Critical</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
+
+                  <div className="action-buttons-wrap">
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => archiveGoal(goal.id)}
+                      onClick={() => handleOpenEditForm(goal)}
                     >
-                      Archive
+                      Edit Goal & Targets
                     </Button>
-                  )}
 
-                  <Button
-                    type="button"
-                    variant="danger"
-                    onClick={() => deleteGoal(goal.id)}
-                  >
-                    Delete
-                  </Button>
+                    {goal.status === 'archived' ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() =>
+                          updateGoal({
+                            ...goal,
+                            status: 'active',
+                            updatedAt: new Date().toISOString(),
+                          })
+                        }
+                      >
+                        Reactivate
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => archiveGoal(goal.id)}
+                      >
+                        Archive
+                      </Button>
+                    )}
+
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => deleteGoal(goal.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </main>

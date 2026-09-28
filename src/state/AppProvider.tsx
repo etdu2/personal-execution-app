@@ -3,6 +3,7 @@ import type {
   Goal,
   GoalCategory,
   ISODateString,
+  LongTermTarget,
   Priority,
   User,
 } from '../types/index.ts'
@@ -15,6 +16,7 @@ export interface AppProviderProps {
   initialDate?: ISODateString
   initialGoals?: Goal[]
   initialCategories?: GoalCategory[]
+  initialTargets?: LongTermTarget[]
 }
 
 export function AppProvider({
@@ -23,6 +25,7 @@ export function AppProvider({
   initialDate,
   initialGoals = [],
   initialCategories = [],
+  initialTargets = [],
 }: AppProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser)
   const [activeDate, setActiveDate] = useState<ISODateString>(
@@ -31,6 +34,7 @@ export function AppProvider({
   const [goals, setGoals] = useState<Goal[]>(initialGoals)
   const [categories, setCategories] =
     useState<GoalCategory[]>(initialCategories)
+  const [targets, setTargets] = useState<LongTermTarget[]>(initialTargets)
 
   const addGoal = useCallback((goal: Goal) => {
     setGoals((prev) => [...prev, goal])
@@ -44,6 +48,7 @@ export function AppProvider({
 
   const deleteGoal = useCallback((goalId: string) => {
     setGoals((prev) => prev.filter((g) => g.id !== goalId))
+    setTargets((prev) => prev.filter((t) => t.goalId !== goalId))
   }, [])
 
   const archiveGoal = useCallback((goalId: string) => {
@@ -78,6 +83,16 @@ export function AppProvider({
     })
   }, [])
 
+  const saveGoalTargets = useCallback(
+    (goalId: string, newTargets: LongTermTarget[]) => {
+      setTargets((prev) => {
+        const withoutGoal = prev.filter((t) => t.goalId !== goalId)
+        return [...withoutGoal, ...newTargets]
+      })
+    },
+    [],
+  )
+
   const value = useMemo<AppContextValue>(
     () => ({
       state: {
@@ -86,6 +101,7 @@ export function AppProvider({
         isInitialized: true,
         goals,
         categories,
+        targets,
       },
       setActiveDate,
       setUser,
@@ -95,18 +111,21 @@ export function AppProvider({
       archiveGoal,
       setGoalPriority,
       addCategory,
+      saveGoalTargets,
     }),
     [
       user,
       activeDate,
       goals,
       categories,
+      targets,
       addGoal,
       updateGoal,
       deleteGoal,
       archiveGoal,
       setGoalPriority,
       addCategory,
+      saveGoalTargets,
     ],
   )
 

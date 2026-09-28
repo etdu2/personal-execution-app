@@ -7,14 +7,20 @@ export {
 export {
   ALL_DAYS_OF_WEEK,
   PRIORITY_WEIGHTS,
+  TARGET_HORIZONS,
+  createEmptyHorizonTargetsMap,
   createGoalCategory,
   createGoalFromFormData,
+  createTargetsFromFormData,
   getInitialGoalFormData,
   sortGoalsByPriority,
   validateGoalForm,
   type GoalFormData,
   type GoalValidationErrors,
   type GoalValidationResult,
+  type HorizonMetadata,
+  type HorizonTargetFormData,
+  type HorizonTargetsMap,
 } from './goalService.ts'
 
 export {
