@@ -1,4 +1,9 @@
 export {
+  AvailabilityScreen,
+  type AvailabilityScreenProps,
+} from './AvailabilityScreen.tsx'
+
+export {
   DashboardScreen,
   type DashboardScreenProps,
 } from './DashboardScreen.tsx'

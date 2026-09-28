@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  AvailabilityScreen,
   DashboardScreen,
   GoalsScreen,
   UserSetupScreen,
@@ -8,7 +9,9 @@ import { AppProvider, useApp } from './state/index.ts'
 
 function AppContent() {
   const { state } = useApp()
-  const [currentView, setCurrentView] = useState<'dashboard' | 'goals'>('dashboard')
+  const [currentView, setCurrentView] = useState<
+    'dashboard' | 'goals' | 'availability'
+  >('dashboard')
   const [isEditingProfile, setIsEditingProfile] = useState(false)
 
   if (!state.user || isEditingProfile) {
@@ -28,10 +31,19 @@ function AppContent() {
     )
   }
 
+  if (currentView === 'availability') {
+    return (
+      <AvailabilityScreen
+        onNavigateToDashboard={() => setCurrentView('dashboard')}
+      />
+    )
+  }
+
   return (
     <DashboardScreen
       onEditProfile={() => setIsEditingProfile(true)}
       onNavigateToGoals={() => setCurrentView('goals')}
+      onNavigateToAvailability={() => setCurrentView('availability')}
     />
   )
 }

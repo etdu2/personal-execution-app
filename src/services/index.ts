@@ -1,4 +1,17 @@
 export {
+  calculateTotalHoursFromFormData,
+  calculateTotalWeeklyHours,
+  formatDayName,
+  getInitialAvailabilityFormData,
+  getOrderedDaysOfWeek,
+  parseAvailabilityFormData,
+  validateAvailabilityForm,
+  type WeeklyAvailabilityFormData,
+  type WeeklyAvailabilityValidationErrors,
+  type WeeklyAvailabilityValidationResult,
+} from './availabilityService.ts'
+
+export {
   calculateNetExecutionCapacity,
   computeCategoryBalanceDistribution,
   evaluateWeeklyGoalStatus,

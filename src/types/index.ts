@@ -29,6 +29,7 @@ export type {
   FixedCommitment,
   PlannedSession,
   PlannedSessionStatus,
+  WeeklyAvailability,
 } from './planning.ts'
 
 export type {

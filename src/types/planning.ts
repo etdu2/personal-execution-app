@@ -90,3 +90,9 @@ export interface PlannedSession {
   createdAt: ISODateTimeString
   updatedAt: ISODateTimeString
 }
+
+/**
+ * User-defined baseline available productive hours per day of the week.
+ * Maps each DayOfWeek ('monday' through 'sunday') to the number of available hours (0-24).
+ */
+export type WeeklyAvailability = Record<DayOfWeek, number>

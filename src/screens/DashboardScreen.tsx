@@ -1,5 +1,8 @@
 import { Badge, Button, Card, Header } from '../components/index.ts'
-import { evaluateWeeklyGoalStatus } from '../services/index.ts'
+import {
+  calculateTotalWeeklyHours,
+  evaluateWeeklyGoalStatus,
+} from '../services/index.ts'
 import { useApp } from '../state/index.ts'
 import type { WeeklyGoalTarget } from '../types/index.ts'
 import { formatMinutesToHours } from '../utils/index.ts'
@@ -7,16 +10,22 @@ import { formatMinutesToHours } from '../utils/index.ts'
 export interface DashboardScreenProps {
   onEditProfile?: () => void
   onNavigateToGoals?: () => void
+  onNavigateToAvailability?: () => void
 }
 
 export function DashboardScreen({
   onEditProfile,
   onNavigateToGoals,
+  onNavigateToAvailability,
 }: DashboardScreenProps) {
   const { state } = useApp()
   const user = state.user
   const activeGoals = state.goals.filter((g) => g.status === 'active')
   const criticalGoals = activeGoals.filter((g) => g.priority === 'critical')
+
+  const totalWeeklyAvailableHours = state.weeklyAvailability
+    ? calculateTotalWeeklyHours(state.weeklyAvailability)
+    : null
 
   // Sample domain target verification (generic, user-agnostic)
   const baselineTarget: WeeklyGoalTarget = {
@@ -105,6 +114,47 @@ export function DashboardScreen({
             </div>
           </Card>
         )}
+
+        {/* Available Time Summary Card */}
+        <Card
+          title="Available Time"
+          subtitle="Step 2 in Core Loop: User-defined available productive hours across the week"
+        >
+          <div className="status-grid">
+            <div className="status-item">
+              <span className="status-label">Weekly Available Time</span>
+              <span className="status-value">
+                {totalWeeklyAvailableHours !== null
+                  ? `${totalWeeklyAvailableHours} Hours`
+                  : 'Not configured yet'}
+              </span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Availability Status</span>
+              <Badge
+                variant={totalWeeklyAvailableHours !== null ? 'success' : 'warning'}
+              >
+                {totalWeeklyAvailableHours !== null
+                  ? 'Schedule Active'
+                  : 'Pending Setup'}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="card-actions">
+            {onNavigateToAvailability && (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={onNavigateToAvailability}
+              >
+                {totalWeeklyAvailableHours !== null
+                  ? 'Manage Weekly Availability'
+                  : '+ Configure Available Time'}
+              </Button>
+            )}
+          </div>
+        </Card>
 
         {/* Goals & Priorities Summary Card */}
         <Card

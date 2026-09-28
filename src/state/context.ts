@@ -6,6 +6,7 @@ import type {
   LongTermTarget,
   Priority,
   User,
+  WeeklyAvailability,
 } from '../types/index.ts'
 
 export interface AppState {
@@ -15,6 +16,7 @@ export interface AppState {
   goals: Goal[]
   categories: GoalCategory[]
   targets: LongTermTarget[]
+  weeklyAvailability: WeeklyAvailability | null
 }
 
 export interface AppContextValue {
@@ -28,6 +30,7 @@ export interface AppContextValue {
   setGoalPriority: (goalId: string, priority: Priority) => void
   addCategory: (category: GoalCategory) => void
   saveGoalTargets: (goalId: string, targets: LongTermTarget[]) => void
+  setWeeklyAvailability: (availability: WeeklyAvailability) => void
 }
 
 export const AppContext = createContext<AppContextValue | undefined>(undefined)

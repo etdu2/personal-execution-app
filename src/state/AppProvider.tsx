@@ -6,6 +6,7 @@ import type {
   LongTermTarget,
   Priority,
   User,
+  WeeklyAvailability,
 } from '../types/index.ts'
 import { getTodayISODate } from '../utils/index.ts'
 import { AppContext, type AppContextValue } from './context.ts'
@@ -17,6 +18,7 @@ export interface AppProviderProps {
   initialGoals?: Goal[]
   initialCategories?: GoalCategory[]
   initialTargets?: LongTermTarget[]
+  initialWeeklyAvailability?: WeeklyAvailability | null
 }
 
 export function AppProvider({
@@ -26,6 +28,7 @@ export function AppProvider({
   initialGoals = [],
   initialCategories = [],
   initialTargets = [],
+  initialWeeklyAvailability = null,
 }: AppProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser)
   const [activeDate, setActiveDate] = useState<ISODateString>(
@@ -35,6 +38,8 @@ export function AppProvider({
   const [categories, setCategories] =
     useState<GoalCategory[]>(initialCategories)
   const [targets, setTargets] = useState<LongTermTarget[]>(initialTargets)
+  const [weeklyAvailability, setWeeklyAvailabilityState] =
+    useState<WeeklyAvailability | null>(initialWeeklyAvailability)
 
   const addGoal = useCallback((goal: Goal) => {
     setGoals((prev) => [...prev, goal])
@@ -93,6 +98,13 @@ export function AppProvider({
     [],
   )
 
+  const setWeeklyAvailability = useCallback(
+    (availability: WeeklyAvailability) => {
+      setWeeklyAvailabilityState(availability)
+    },
+    [],
+  )
+
   const value = useMemo<AppContextValue>(
     () => ({
       state: {
@@ -102,6 +114,7 @@ export function AppProvider({
         goals,
         categories,
         targets,
+        weeklyAvailability,
       },
       setActiveDate,
       setUser,
@@ -112,6 +125,7 @@ export function AppProvider({
       setGoalPriority,
       addCategory,
       saveGoalTargets,
+      setWeeklyAvailability,
     }),
     [
       user,
@@ -119,6 +133,7 @@ export function AppProvider({
       goals,
       categories,
       targets,
+      weeklyAvailability,
       addGoal,
       updateGoal,
       deleteGoal,
@@ -126,6 +141,7 @@ export function AppProvider({
       setGoalPriority,
       addCategory,
       saveGoalTargets,
+      setWeeklyAvailability,
     ],
   )
 
