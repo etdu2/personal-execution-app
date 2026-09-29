@@ -1,6 +1,8 @@
 import { Badge, Button, Card, Header } from '../components/index.ts'
 import {
   calculateTotalWeeklyHours,
+  calculateUsablePlanningCapacity,
+  calculateWeeklyCommitmentHours,
   evaluateWeeklyGoalStatus,
 } from '../services/index.ts'
 import { useApp } from '../state/index.ts'
@@ -11,12 +13,14 @@ export interface DashboardScreenProps {
   onEditProfile?: () => void
   onNavigateToGoals?: () => void
   onNavigateToAvailability?: () => void
+  onNavigateToCommitments?: () => void
 }
 
 export function DashboardScreen({
   onEditProfile,
   onNavigateToGoals,
   onNavigateToAvailability,
+  onNavigateToCommitments,
 }: DashboardScreenProps) {
   const { state } = useApp()
   const user = state.user
@@ -26,6 +30,19 @@ export function DashboardScreen({
   const totalWeeklyAvailableHours = state.weeklyAvailability
     ? calculateTotalWeeklyHours(state.weeklyAvailability)
     : null
+
+  const hasCommitments = state.fixedCommitments.length > 0
+  const totalWeeklyCommitmentHours = hasCommitments
+    ? calculateWeeklyCommitmentHours(state.fixedCommitments)
+    : null
+
+  const usableCapacityHours =
+    totalWeeklyAvailableHours !== null && totalWeeklyCommitmentHours !== null
+      ? calculateUsablePlanningCapacity(
+          totalWeeklyAvailableHours,
+          totalWeeklyCommitmentHours,
+        )
+      : null
 
   // Sample domain target verification (generic, user-agnostic)
   const baselineTarget: WeeklyGoalTarget = {
@@ -151,6 +168,61 @@ export function DashboardScreen({
                 {totalWeeklyAvailableHours !== null
                   ? 'Manage Weekly Availability'
                   : '+ Configure Available Time'}
+              </Button>
+            )}
+          </div>
+        </Card>
+
+        {/* Fixed Commitments Summary Card */}
+        <Card
+          title="Fixed Commitments"
+          subtitle="Step 3 in Core Loop: Non-negotiable obligations that block execution capacity"
+        >
+          <div className="status-grid">
+            <div className="status-item">
+              <span className="status-label">Weekly Fixed Commitments</span>
+              <span className="status-value">
+                {totalWeeklyCommitmentHours !== null
+                  ? `${totalWeeklyCommitmentHours} Hours`
+                  : 'Not configured yet'}
+              </span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Commitment Count</span>
+              <span className="status-value">
+                {hasCommitments
+                  ? `${state.fixedCommitments.length} Scheduled`
+                  : '0 Defined'}
+              </span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Commitment Status</span>
+              <Badge variant={hasCommitments ? 'info' : 'warning'}>
+                {hasCommitments ? 'Schedule Active' : 'Pending Setup'}
+              </Badge>
+            </div>
+            {totalWeeklyAvailableHours !== null && (
+              <div className="status-item">
+                <span className="status-label">Usable Planning Capacity</span>
+                <span className="status-value highlight-accent">
+                  {usableCapacityHours !== null
+                    ? `${usableCapacityHours} Hours`
+                    : 'Calculating...'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="card-actions">
+            {onNavigateToCommitments && (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={onNavigateToCommitments}
+              >
+                {hasCommitments
+                  ? 'Manage Fixed Commitments'
+                  : '+ Configure Fixed Commitments'}
               </Button>
             )}
           </div>

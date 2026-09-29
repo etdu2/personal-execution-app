@@ -1,5 +1,6 @@
 import { createContext } from 'react'
 import type {
+  FixedCommitment,
   Goal,
   GoalCategory,
   ISODateString,
@@ -17,6 +18,7 @@ export interface AppState {
   categories: GoalCategory[]
   targets: LongTermTarget[]
   weeklyAvailability: WeeklyAvailability | null
+  fixedCommitments: FixedCommitment[]
 }
 
 export interface AppContextValue {
@@ -31,6 +33,9 @@ export interface AppContextValue {
   addCategory: (category: GoalCategory) => void
   saveGoalTargets: (goalId: string, targets: LongTermTarget[]) => void
   setWeeklyAvailability: (availability: WeeklyAvailability) => void
+  addFixedCommitment: (commitment: FixedCommitment) => void
+  updateFixedCommitment: (commitment: FixedCommitment) => void
+  deleteFixedCommitment: (commitmentId: string) => void
 }
 
 export const AppContext = createContext<AppContextValue | undefined>(undefined)

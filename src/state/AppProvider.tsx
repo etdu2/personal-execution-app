@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type {
+  FixedCommitment,
   Goal,
   GoalCategory,
   ISODateString,
@@ -19,6 +20,7 @@ export interface AppProviderProps {
   initialCategories?: GoalCategory[]
   initialTargets?: LongTermTarget[]
   initialWeeklyAvailability?: WeeklyAvailability | null
+  initialFixedCommitments?: FixedCommitment[]
 }
 
 export function AppProvider({
@@ -29,6 +31,7 @@ export function AppProvider({
   initialCategories = [],
   initialTargets = [],
   initialWeeklyAvailability = null,
+  initialFixedCommitments = [],
 }: AppProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser)
   const [activeDate, setActiveDate] = useState<ISODateString>(
@@ -40,6 +43,9 @@ export function AppProvider({
   const [targets, setTargets] = useState<LongTermTarget[]>(initialTargets)
   const [weeklyAvailability, setWeeklyAvailabilityState] =
     useState<WeeklyAvailability | null>(initialWeeklyAvailability)
+  const [fixedCommitments, setFixedCommitments] = useState<FixedCommitment[]>(
+    initialFixedCommitments,
+  )
 
   const addGoal = useCallback((goal: Goal) => {
     setGoals((prev) => [...prev, goal])
@@ -105,6 +111,25 @@ export function AppProvider({
     [],
   )
 
+  const addFixedCommitment = useCallback((commitment: FixedCommitment) => {
+    setFixedCommitments((prev) => [...prev, commitment])
+  }, [])
+
+  const updateFixedCommitment = useCallback(
+    (updatedCommitment: FixedCommitment) => {
+      setFixedCommitments((prev) =>
+        prev.map((c) =>
+          c.id === updatedCommitment.id ? updatedCommitment : c,
+        ),
+      )
+    },
+    [],
+  )
+
+  const deleteFixedCommitment = useCallback((commitmentId: string) => {
+    setFixedCommitments((prev) => prev.filter((c) => c.id !== commitmentId))
+  }, [])
+
   const value = useMemo<AppContextValue>(
     () => ({
       state: {
@@ -115,6 +140,7 @@ export function AppProvider({
         categories,
         targets,
         weeklyAvailability,
+        fixedCommitments,
       },
       setActiveDate,
       setUser,
@@ -126,6 +152,9 @@ export function AppProvider({
       addCategory,
       saveGoalTargets,
       setWeeklyAvailability,
+      addFixedCommitment,
+      updateFixedCommitment,
+      deleteFixedCommitment,
     }),
     [
       user,
@@ -134,6 +163,7 @@ export function AppProvider({
       categories,
       targets,
       weeklyAvailability,
+      fixedCommitments,
       addGoal,
       updateGoal,
       deleteGoal,
@@ -142,6 +172,9 @@ export function AppProvider({
       addCategory,
       saveGoalTargets,
       setWeeklyAvailability,
+      addFixedCommitment,
+      updateFixedCommitment,
+      deleteFixedCommitment,
     ],
   )
 

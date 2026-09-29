@@ -18,6 +18,23 @@ export {
 } from './balanceService.ts'
 
 export {
+  calculateCommitmentDurationHours,
+  calculateCommitmentDurationMinutes,
+  calculateDailyCommitmentHours,
+  calculateUsablePlanningCapacity,
+  calculateWeeklyCommitmentHours,
+  createCommitmentFromFormData,
+  formatCommitmentDurationDisplay,
+  getInitialCommitmentFormData,
+  parseTimeToMinutes,
+  sortCommitmentsByDayAndTime,
+  validateCommitmentForm,
+  type CommitmentFormData,
+  type CommitmentValidationErrors,
+  type CommitmentValidationResult,
+} from './commitmentService.ts'
+
+export {
   ALL_DAYS_OF_WEEK,
   PRIORITY_WEIGHTS,
   TARGET_HORIZONS,

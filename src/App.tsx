@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   AvailabilityScreen,
   DashboardScreen,
+  FixedCommitmentsScreen,
   GoalsScreen,
   UserSetupScreen,
 } from './screens/index.ts'
@@ -10,7 +11,7 @@ import { AppProvider, useApp } from './state/index.ts'
 function AppContent() {
   const { state } = useApp()
   const [currentView, setCurrentView] = useState<
-    'dashboard' | 'goals' | 'availability'
+    'dashboard' | 'goals' | 'availability' | 'commitments'
   >('dashboard')
   const [isEditingProfile, setIsEditingProfile] = useState(false)
 
@@ -39,11 +40,20 @@ function AppContent() {
     )
   }
 
+  if (currentView === 'commitments') {
+    return (
+      <FixedCommitmentsScreen
+        onNavigateToDashboard={() => setCurrentView('dashboard')}
+      />
+    )
+  }
+
   return (
     <DashboardScreen
       onEditProfile={() => setIsEditingProfile(true)}
       onNavigateToGoals={() => setCurrentView('goals')}
       onNavigateToAvailability={() => setCurrentView('availability')}
+      onNavigateToCommitments={() => setCurrentView('commitments')}
     />
   )
 }

@@ -16,6 +16,7 @@ export interface FixedCommitment {
   id: string
   userId: string
   title: string
+  dayOfWeek: DayOfWeek
   description?: string
   /** Whether this commitment repeats weekly or occurs on a single specific date. */
   isRecurring: boolean
